@@ -6,7 +6,7 @@
 
 用户明确要求：本地不再额外保留原始代码；改用 **DeepSeek Flash 多模态**、**Vue 3** 前端、**FastAPI** 后端；页面布局参考大疆官网，但**摄影以教育场景为主**；补充 GitHub 测试。
 
-- 新版分支 `v2/vue3-deepseek-flash`；按用户后续要求清理本地 v1 专用快照与 Streamlit 文件，Git 原有历史不改写。未经用户要求不要 commit / push / 发布标签。
+- 当前版本由 `main` 维护，开发源分支为 `v2/vue3-deepseek-flash`；按用户后续要求清理本地 v1 专用快照与 Streamlit 文件，Git 原有历史不改写。未经用户要求不要 commit / push / 发布标签。
 - `app.py` 导出 FastAPI；`src/api/` HTTP 接口与 Pydantic 校验；`frontend/` Vue 3 + TypeScript + Vite。
 - `src/agents/` 保留 LangGraph：校验 → 图片理解 → 检索 → 语法 → 反馈/评分 → critic（最多重写一次）→ coach → PostgreSQL。识图失败短路，不继续评分。
 - 文本、评分、视觉统一 `deepseek-flash`，服务端 `DEEPSEEK_MODEL_NAME` 可配置；不再依赖 GLM。图片和评分仍为独立调用，复用同一模型供应商。

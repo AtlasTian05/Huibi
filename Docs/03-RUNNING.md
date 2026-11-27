@@ -19,7 +19,7 @@ cd frontend && npm ci && npm run build && cd ..
 python -m uvicorn app:app --host 127.0.0.1 --port 8000
 ```
 
-Windows 激活环境用 `.venv\Scripts\activate`；构建完成后也可运行根目录批处理，或 `scripts/start_app.ps1`。macOS / Linux 可运行 `scripts/start_app.sh`。本机已准备项目私有 PostgreSQL（仅监听 127.0.0.1，数据在被忽略的 `data/postgres/`，运行文件在 `.runtime/postgres/`）。macOS/Linux 启动脚本会复用或启动这个已初始化的本地库；其他环境仍需自行启动安装的 PostgreSQL。不会自动下载 embedding 模型。
+Windows 激活环境用 `.venv\Scripts\activate`；构建完成后也可运行根目录批处理，或 `scripts/start_app.ps1`。macOS / Linux 可运行 `scripts/start_app.sh`。可使用项目私有 PostgreSQL（仅监听 127.0.0.1，数据在被忽略的 `data/postgres/`，运行文件在 `.runtime/postgres/`）。这些组件不随 Git 发布；macOS/Linux 启动脚本仅在本机已初始化此集群时复用或启动，否则需自行安装并启动 PostgreSQL。不会自动下载 embedding 模型。
 
 - 页面：http://127.0.0.1:8000
 - API 文档：http://127.0.0.1:8000/api/docs
