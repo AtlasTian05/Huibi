@@ -70,7 +70,7 @@ def image_analysis_node(state: EssayReviewState) -> EssayReviewState:
 
     message = HumanMessage(content=[
         {"type": "text", "text": IMAGE_ANALYSIS_PROMPT},
-        {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{image_b64}"}},
+        {"type": "image_url", "image_url": {"url": f"data:{state.get('essay_image_mime') or 'image/png'};base64,{image_b64}"}},
     ])
     try:
         response = get_vision_chat_model().invoke([message])
@@ -390,7 +390,7 @@ FEEDBACK_ONLY_PROMPT = """你是英语写作模拟评阅员，负责给出定性
 这是依据公开量表的模拟对照，不得自称正式考官或考试机构成绩。"""
 
 
-# 节点5：打分（DeepSeek V4 Pro）+ 定性反馈（DeepSeek/GLM，语言维度可查词典）分开调用，各自解析
+# 节点5：打分（DeepSeek Flash）+ 定性反馈（DeepSeek Flash，语言维度可查词典）分开调用，各自解析
 def feedback_agent_node(state: EssayReviewState) -> EssayReviewState:
     from src.agents.llm import get_chat_model_with_fallback, get_primary_chat_model, get_scoring_chat_model
     from src.exam_types import GENERAL
@@ -421,7 +421,7 @@ def feedback_agent_node(state: EssayReviewState) -> EssayReviewState:
     else:
         grammar_tool_findings = "（本地规则库+LanguageTool均未检测到明显问题）"
 
-    # 打分固定走DeepSeek V4 Pro（get_scoring_chat_model()）；定性反馈仍走DeepSeek/GLM。
+    # 打分固定走DeepSeek Flash（get_scoring_chat_model()）；定性反馈同样走DeepSeek Flash。
     # 两次调用独立try/except，一次失败不会连累另一次已经拿到的结果被丢弃。
     score_payload: dict = {}
     score_raw = ""
@@ -805,8 +805,8 @@ def progress_tracker_node(state: EssayReviewState) -> EssayReviewState:
     """把完整批改结果落库，供历史趋势和下一次个性化建议复用。"""
     from src.storage import db  # 懒加载：db.py需要psycopg，见该文件顶部说明
 
-    db.save_submission(state)
-    return state
+    submission_id = db.save_submission(state)
+    return {**state, "submission_id": submission_id}
 
 
 def short_circuit_reject_node(state: EssayReviewState) -> EssayReviewState:

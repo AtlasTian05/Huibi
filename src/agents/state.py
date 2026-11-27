@@ -17,7 +17,9 @@ class EssayReviewState(TypedDict, total=False):
     essay_topic: Optional[str]
 
     essay_image_b64: Optional[str]  # IELTS Task 1上传的图表/图片，base64编码
-    image_analysis: Optional[str]   # 图片理解模型（GLM-4V-Flash）对图片内容的结构化描述
+    essay_image_mime: Optional[str]
+    submission_id: int
+    image_analysis: Optional[str]   # DeepSeek Flash 对图片内容的结构化描述
     image_analysis_error: Optional[str]
 
     is_valid: bool

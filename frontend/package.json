@@ -1,0 +1,36 @@
+{
+  "name": "huibi-web",
+  "private": true,
+  "version": "2.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "vitest run",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "vue": "3.5.46",
+    "vue-router": "4.5.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.1",
+    "@types/node": "22.15.29",
+    "@vitejs/plugin-vue": "6.0.11",
+    "@vue/test-utils": "2.4.11",
+    "jsdom": "26.1.0",
+    "typescript": "5.8.3",
+    "vite": "8.4.0",
+    "vitest": "5.1.2",
+    "vue-tsc": "3.3.14"
+  },
+  "engines": {
+    "node": ">=22.22.2"
+  },
+  "overrides": {
+    "glob": "14.0.6",
+    "minimatch": "11.0.9",
+    "editorconfig": "4.0.1"
+  }
+}

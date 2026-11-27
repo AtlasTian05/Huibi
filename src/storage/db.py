@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS submissions (
     exam_type TEXT,
     exam_subtype TEXT,
     essay_topic TEXT,
+    essay_text TEXT,
     official_rubric_score DOUBLE PRECISION,
     official_rubric_max DOUBLE PRECISION,
     official_rubric_label TEXT,
@@ -68,6 +69,7 @@ CREATE TABLE IF NOT EXISTS submissions (
 -- 表已经在旧版本（没有这两列）建过的话，CREATE TABLE IF NOT EXISTS不会补列，
 -- 这两条ALTER负责把已存在的旧表补齐；新建的表这两列已经在上面CREATE TABLE里，
 -- ADD COLUMN IF NOT EXISTS会直接跳过，不会报错也不会重复。
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS essay_text TEXT;
 ALTER TABLE submissions ADD COLUMN IF NOT EXISTS essay_image_path TEXT;
 ALTER TABLE submissions ADD COLUMN IF NOT EXISTS image_analysis TEXT;
 
@@ -88,6 +90,8 @@ def _sniff_image_ext(data: bytes) -> str:
         return "jpg"
     if data[:6] in (b"GIF87a", b"GIF89a"):
         return "gif"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "webp"
     return "png"
 
 
@@ -117,7 +121,9 @@ def _build_dsn() -> str:
     dbname = os.environ.get("POSTGRES_DB", "huibi")
     user = os.environ.get("POSTGRES_USER", "postgres")
     password = os.environ.get("POSTGRES_PASSWORD", "")
-    auth = f"{user}:{password}" if password else user
+    from urllib.parse import quote
+
+    auth = f"{quote(user, safe='')}:{quote(password, safe='')}" if password else quote(user, safe="")
     return f"postgresql://{auth}@{host}:{port}/{dbname}"
 
 
@@ -176,7 +182,7 @@ def verify_user(username: str, password: str, dsn: Optional[str] = None) -> bool
 
 
 _SUBMISSION_COLUMNS = [
-    "user_id", "exam_type", "exam_subtype", "essay_topic",
+    "user_id", "exam_type", "exam_subtype", "essay_topic", "essay_text",
     "official_rubric_score", "official_rubric_max", "official_rubric_label", "official_rubric_scores",
     "score_source", "primary_score", "primary_max", "primary_label",
     "secondary_score", "secondary_max", "secondary_label",
@@ -186,7 +192,7 @@ _SUBMISSION_COLUMNS = [
 ]
 
 
-def save_submission(state: dict, dsn: Optional[str] = None) -> None:
+def save_submission(state: dict, dsn: Optional[str] = None) -> int:
     essay_image_b64 = state.get("essay_image_b64")
     essay_image_path = _save_uploaded_image(essay_image_b64) if essay_image_b64 else None
     values = (
@@ -194,6 +200,7 @@ def save_submission(state: dict, dsn: Optional[str] = None) -> None:
         state.get("exam_type"),
         state.get("exam_subtype"),
         state.get("essay_topic"),
+        state.get("essay_text", ""),
         state.get("official_rubric_score"),
         state.get("official_rubric_max"),
         state.get("official_rubric_label"),
@@ -220,10 +227,12 @@ def save_submission(state: dict, dsn: Optional[str] = None) -> None:
         with conn.cursor() as cur:
             cur.execute(
                 f"INSERT INTO submissions ({', '.join(_SUBMISSION_COLUMNS)}) "
-                f"VALUES ({', '.join(['%s'] * len(_SUBMISSION_COLUMNS))})",
+                f"VALUES ({', '.join(['%s'] * len(_SUBMISSION_COLUMNS))}) RETURNING id",
                 values,
             )
+            submission_id = cur.fetchone()[0]
         conn.commit()
+        return submission_id
     finally:
         conn.close()
 

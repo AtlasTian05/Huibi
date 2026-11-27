@@ -982,3 +982,46 @@
 **做了什么**：这11个commit当时已经推到了GitHub的`main`和`agent/project-updates`两个分支，去掉trailer必须重写提交信息+force-push覆盖远程——这是改写已公开历史的操作，**先用`AskUserQuestion`向用户확认是否现在执行**，用户选择"重写并force-push两个分支"后才动手。用`git filter-branch -f --msg-filter`（范围`a55fe55^..agent/project-updates`）删掉trailer行并清理多余空行，只改提交信息不改任何文件树内容；确认作者/提交者身份全程都是用户自己的`EthanTian05`（trailer是唯一的Claude痕迹来源）；`git branch -f main agent/project-updates`让本地`main`同步到重写后的历史；`git push --force-with-lease`（不是裸`--force`，多一层"远程没有被别人再动过"的安全检查）分别推送两个分支。
 
 **怎么验证的**：`git diff refs/original/refs/heads/agent/project-updates agent/project-updates --stat`确认重写前后文件树内容完全一致（无输出=零差异），只有commit hash和消息变了；`git log --all --grep="Co-Authored-By: Claude"`重写后只在`refs/original/*`这个filter-branch自动生成的备份引用里还能查到（已用`git update-ref -d`清理掉），真正的分支引用下已经查不到；重新`git fetch`后确认`origin/main`/`origin/agent/project-updates`都是重写后的新hash；`gh run list`确认force-push触发的GitHub Actions两个分支都还是`completed success`（重写没有破坏CI）；本地`scripts/smoke_test_nodes.py`也重跑确认过一遍工作区文件没有因为filter-branch的checkout动作出现异常。
+
+## 2026-11-27 · v1 归档，Vue 3 + FastAPI + DeepSeek Flash 多模态迁移
+
+**背景**：用户要求从指定 GitHub 仓库拉取，原代码保留为 v1；统一 `deepseek-flash`，改为 Vue 3 页面，参考 DJI 官网布局但采用教育主题摄影，并明确后端使用 FastAPI。
+
+**改法**：
+
+- 拉取基线 `4070e44`，本地建立 `v1` 标签及 `v2/vue3-deepseek-flash` 分支；未提交、未推送、未发布远端标签。
+- Vue 3 + TypeScript + Vite 实现教育主题首页、注册登录、批改/题图上传、量表及四维反馈、辅导练习/AI 范文、历史详情/删除、知识库问答。Unsplash 图书馆和书写摄影存本地并记录来源，不使用 DJI 品牌素材。
+- FastAPI 接口复用 LangGraph + PostgreSQL；HttpOnly Cookie 会话 token 摘要持久化；记录及题图按用户鉴权，跨站请求/过大请求拒绝。数据库兼容添加作文原文列，保留旧数据。
+- 文本和图片统一 DeepSeek Flash；按真实 MIME 构建 `image_url`，校验 PNG/JPEG/WebP 内容、5 MB 和像素限制。图片理解失败短路，不继续评分/保存。
+- 历史趋势按考试、子任务与满分量表隔离；含鼠标/触摸/键盘读数及数据表。图表浅/深色配色通过技能提供的计算验证器。
+- GitHub Actions 增加 Python 3.11/3.12 + PostgreSQL 17、Vue 单测、类型构建、依赖审计及桌面/手机 Chromium 测试；RAG 重依赖拆为可选安装，更新默认启动脚本与文档。
+
+**实际验证**：Python **59 项通过**（含真实 PostgreSQL 注册/登录/会话撤销、旧库迁移、JSONB/图片读写、越权拒绝、完整 HTTP→LangGraph→数据库链路；该链路仅替换外部模型/语法/RAG边界）。Vue **9 项通过**，类型检查/生产构建成功，Playwright 桌面/手机 **16 项通过**。另在真实 Vue 页面连接 FastAPI + PostgreSQL 验证注册→登录→历史→刷新保留会话→退出，不 mock API，页面错误数为 0；查看了首页、工作台与手机趋势截图。`ruff`、`git diff --check` 通过，`npm audit` 报 0 漏洞。
+
+**未验证/边界**：本机无真实 DeepSeek key，未执行付费模型实调；未下载 embedding/构建真实向量知识库；未推送，因此 GitHub 托管 runner 尚未执行。仍是本机单 worker 方案，非生产部署。测试数据库与服务独立于用户正式数据，测试 schema 自动清理。
+
+## 2026-11-27 · 真实模型验收、旧版清理与本机运行
+
+**背景**：用户将真实 key 填在 `.env.example`，要求真实测试、无需本地保留原版并最终运行系统。
+
+**改法**：将 key 安全移入 Git 忽略的 `.env`（600 权限），恢复示例占位值；本机准备 PostgreSQL 17.6 私有集群，仅监听 `127.0.0.1:5432`，密码仅写 `.env`，数据/运行组件分别位于忽略的 `data/postgres/` 与 `.runtime/`。清理 Streamlit 页面、主题、配置及专用测试/部署脚本，删除此次创建的本地 `v1` 标签，不改写原有 Git 历史。增加可重复的 `start_db.sh` 和显式 `--run-live` 付费验收脚本；本地 HTTP 禁用系统代理，避免 localhost 请求被代理误转发。
+
+**真实验证**：DeepSeek Flash key 连通；完整 HTTP→LangGraph→真实模型→PostgreSQL 链路通过。合成通用作文 **84/100，25.3 秒**；带 JPEG 合成表格的 IELTS Task 1 **7.0/9，22.3 秒**，关键数值识别、四维反馈、练习、AI 范文、历史原文与图片读取全部通过；问答返回真实结果。临时账号、提交和上传题图均已清理。实测脚本按服务端中文维度契约校验，避免误将显示名当英文键。真实浏览器注册→登录→档案→刷新保持会话→退出通过（无 API mock、页面错误 0）。回归 Python **59**、Vue **9**、桌面/手机 E2E **16** 项全通过，类型构建及 Ruff 通过。
+
+**运行状态与边界**：系统保持在 `http://127.0.0.1:8000` 运行，API 文档 `/api/docs`；重启可执行 `./scripts/start_app.sh`。RAG 向量库仍未构建，问答此次验证不等于真实向量检索验收。未 commit / push。
+
+
+## 2026-11-27 · 全站视觉统一与界面文案精简
+
+**背景**：用户要求各页统一参考 DJI 的简约视觉，精简系统展示/介绍文字；明确作文返回的批改内容仍应具体。
+
+**改法**：首页、登录/注册、工作台、结果、档案和问答统一黑白层次、教育摄影、留白与细分隔线；工作台使用紧凑摄影横幅。删除教程式介绍、技术徽标和冗长占位文字，缩短标题、状态及空页面；保留输入限制、删除确认、AI/非官方评分与范文标识。不修改模型提示词、评分逻辑或返回内容，四维解析、示例、修改清单、练习与范文完整呈现。
+
+**实际验证**：Vue **9** 项、桌面/手机 Chromium **20** 项通过；类型检查、生产构建、`git diff --check` 通过。浏览器覆盖上传/批改/删除、问答、趋势分组、空档案和处理中状态；断言详细反馈未丢失，各测试页无横向溢出。查看首页、登录、注册、工作台、结果、趋势、问答、空档案和处理中的桌面/手机截图。初次回归因同名字段定位冲突失败，限定到写作面板后完整重跑通过。系统仍在 `http://127.0.0.1:8000`，健康接口正常；本轮未重跑付费模型或后端测试，未 commit / push。
+
+
+## 2026-11-27 · 准备将 v2 发布到 main
+
+**背景**：用户要求当前版本推送至 GitHub `main`，完成后清理本地文件。
+
+**准备与验证**：已 fetch，远端 `main` 与开发分支基线一致，可快进、不改写历史。候选源码密钥扫描通过，`.env`、本地数据库、运行组件及生成文件均被 Git 忽略；Python **59** 项（含独立 schema 的 PostgreSQL 测试）及 CI 范围 Ruff 检查通过，沿用本轮前端 **9**、浏览器 **20** 项通过结果。仅发布源码和测试，不发布真实 key 或本地数据库；推送和远端 CI 结果待执行确认。本地清理范围尚待确认，不预先删除数据。

@@ -22,6 +22,10 @@ def route_after_critic(state: EssayReviewState) -> str:
     return "coach_agent" if state.get("critic_approved", True) else "feedback_agent"
 
 
+def route_after_image(state: EssayReviewState) -> str:
+    return "short_circuit_reject" if state.get("image_analysis_error") else "retrieval_agent"
+
+
 # LangGraph 主流程
 def build_graph():
     graph = StateGraph(EssayReviewState)
@@ -46,7 +50,10 @@ def build_graph():
             "short_circuit_reject": "short_circuit_reject",
         },
     )
-    graph.add_edge("image_analysis", "retrieval_agent")
+    graph.add_conditional_edges("image_analysis", route_after_image, {
+        "short_circuit_reject": "short_circuit_reject",
+        "retrieval_agent": "retrieval_agent",
+    })
     graph.add_edge("retrieval_agent", "grammar_check")
     graph.add_edge("grammar_check", "feedback_agent")
     graph.add_edge("feedback_agent", "critic_agent")

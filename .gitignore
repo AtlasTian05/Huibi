@@ -25,3 +25,18 @@ id_rsa
 # 已删除的自训练评分模型阶段留下的评测产物（批量打分结果、临时sqlite库），
 # 不是源码，本地实验输出，不需要进版本库。
 reports/
+
+# Vue / tests
+node_modules/
+frontend/dist/
+frontend/coverage/
+frontend/playwright-report/
+frontend/test-results/
+.pytest_cache/
+.ruff_cache/
+.env.*
+!.env.example
+
+# Local-only runtime and persistent PostgreSQL cluster
+.runtime/
+data/postgres/

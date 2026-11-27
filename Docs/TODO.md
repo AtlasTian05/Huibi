@@ -1,23 +1,18 @@
-# TODO 待办清单
+# TODO
 
-> 现状速览：全部过程记录在`02-Progress.md`，已确认的设计决策/环境信息/踩过的坑都在`CLAUDE.md`。
-> 这份`TODO.md`只保留"需要你决策/补充的事项"、"上一轮完成情况汇报"两块，“下一步”（仅保留标题）
-> `CLAUDE.md`或`Progress.md`，不留在这里重复。
+## 需要你决策 / 补充
 
+- **RAG 向量检索**：当前未下载 embedding 或构建向量库；真实模型批改及写作问答已通过，但尚不能宣称完成真实向量检索验收。需要时按 `03-RUNNING.md` 安装可选依赖并构建。
+- **保留的效率取舍**：critic 最多触发一次重写，仍会连带再评分；图片理解与评分是同供应商的独立调用。暂不新增缓存/任务队列。
 
-## 需要你决策
+## 最近完成
 
-- **反思循环触发重写时会连带重新打一次分（多一次DeepSeek调用），这是刻意接受的效率取舍，不是bug**：`critic_agent_node`只复核定性反馈质量，不复核数值评分，但`feedback_agent_node`没有拆出"只重跑反馈、复用上一轮分数"的路径——要做到这一点需要在state里额外缓存原始英文键的`rubric_scores`（现在`score_details`已经转成中文展示名，逆向还原不回去）。这条重试路径本身封顶1次（不是每次提交都会触发，只有critic判定不合格时才会），我判断这个复杂度不值得现在做，如果以后发现重写触发得很频繁、多打一次分的成本变得明显，再回来做"只重跑反馈"这个优化。
+2026-11-27：全站统一教育摄影与简约视觉，精简界面介绍和提示性文案；作文反馈保持详细完整。Vue 9、桌面/手机 E2E 20 项及类型构建通过，已查看各页截图，服务持续运行。
 
-## 上一轮完成情况汇报
+2026-11-27：key 从示例移至 `.env`，示例恢复占位值。本地 PostgreSQL 已准备；真实 DeepSeek Flash 文本和 JPEG 题图全链路批改通过，测试作文分别 84/100 与 7.0/9；问答、真实浏览器登录注册通过。临时测试数据已清理。Python 59、Vue 9、桌面/手机 E2E 16 项通过。
 
-> 只保留最近一轮的浓缩汇报，更早的历史见`Progress.md`（每轮都有完整记录，不在这里累积）。
-
-**第四十九轮**：你截图反馈GitHub的Contributors列表里出现了"claude"，要求不要有这种情况。根因是上一轮11个commit都带了`Co-Authored-By: Claude Sonnet 5`这行trailer，GitHub据此把Claude算成了独立贡献者。这几个commit已经推到远程，去掉trailer必须重写历史+force-push——**先用`AskUserQuestion`确认要不要现在执行**（改写已公开历史是有风险的操作），用户选择"重写并force-push两个分支"后才动手：`git filter-branch --msg-filter`删trailer（只改提交信息，不改任何文件树内容，用`git diff`确认过内容零差异），`git push --force-with-lease`（不是裸`--force`）推送`main`和`agent/project-updates`。**这轮开始的commit已经不再带Co-Authored-By trailer**，避免同样的问题再发生。
-
-**怎么验证的**：`git diff refs/original/refs/heads/agent/project-updates agent/project-updates --stat`确认重写前后文件树内容完全一致；`git log --grep="Co-Authored-By: Claude"`确认真正的分支引用下（不是filter-branch自动生成的备份引用）已经查不到这行；`gh run list`确认force-push之后GitHub Actions两个分支仍然是`completed success`。
-
-**没有做的验证**：没有验证`test_graph_routing.py`里`pytest.importorskip`在"pytest装了但langgraph没装"这种场景下的真实跳过行为（本地两个Python环境要么都没装pytest要么都能装成langgraph，没有构造出这个中间状态，但`importorskip`是pytest标准API，行为有充分把握）。
+按后续要求删除本地 `v1` 标签及旧 Streamlit 专用文件，不改写原有 Git 历史；未提交或推送。系统运行在 http://127.0.0.1:8000，重启执行 `./scripts/start_app.sh`。
 
 ## 下一步
-（暂无）
+
+可以直接在页面注册自己的账号并使用；需要真实 RAG 检索时再构建知识库。
